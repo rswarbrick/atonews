@@ -16,8 +16,8 @@
 (defgeneric render-to-message (object stream))
 
 (defmethod render-to-message ((h header) stream)
-  (format stream "~A: ~A~%"
-          (key h) (encode-2047-header (value h) (- 75 (length (key h)) 2))))
+  (princ (rfc2047-format-header (key h) (value h)) stream)
+  (fresh-line stream))
 
 (defun make-message (from subject groups &optional body)
   (let ((msg (make-instance 'message)))
