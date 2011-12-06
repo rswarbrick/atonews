@@ -13,11 +13,9 @@
     (error "Invalid key for header: ~A" key))
   (make-instance 'header :key key :value value))
 
-(defgeneric render-to-message (object stream))
-
 (defmethod render-to-message ((h header) stream)
   (princ (rfc2047-format-header (key h) (value h)) stream)
-  (fresh-line stream))
+  (crlf stream))
 
 (defun make-message (from subject groups &optional body)
   (let ((msg (make-instance 'message)))
@@ -27,6 +25,20 @@
     (when body (setf (body msg) body))
     msg))
 
+(defmethod render-to-message ((str string) stream)
+  ;; Copy the string straight through. This shouldn't usually be used since it
+  ;; doesn't deal with CRLF problems or with 8bit characters.
+  (princ str stream)
+  (crlf))
+
 (defmethod render-to-message ((m message) stream)
-  (map nil (lambda (h) (render-to-message h stream)) (headers m))
-  (format stream "~%~A~%" (body m)))
+  (map nil
+       (lambda (h) (render-to-message h stream))
+       (headers m))
+  ;; MIME parts do the double crlf themselves, since they have a couple of their
+  ;; own headers to put in before the end of the header section.
+  (if (mime-part? (body m))
+      (render-to-message (make-header "MIME-Version" "1.0") stream)
+      (crlf stream))
+  (render-to-message (body m) stream)
+  (values))

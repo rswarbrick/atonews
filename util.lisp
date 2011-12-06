@@ -34,3 +34,9 @@ than BASE so that the sum of these numbers with increasing powers of BASE is N."
     (do* ((k n (floor k base)))
          ((= k 0) acc)
       (push (mod k base) acc))))
+
+(defun crlf (stream)
+  "Output #\Return #\Newline to stream."
+  (princ #\Return stream)
+  (princ #\Newline stream)
+  (values))

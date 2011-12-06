@@ -127,6 +127,14 @@ encoded value."
       (t
        (error "Unknown encoding method: ~A" method)))))
 
+(defun looking-at? (string regex &key (start 0))
+  "Return TRUE iff there is a match for REGEX in STRING, starting at position
+START."
+  (and (cl-ppcre:scan (append '(:sequence :start-anchor)
+                              (list (cl-ppcre:parse-string regex)))
+                      string :start start)
+       t))
+
 (defun rfc2047-fold (str &optional (beginning-of-line 0))
   "Fold STR as per rfc2047. Make BEGINNING-OF-LINE negative if there was a
 header earlier. Acts destructively on STR."
@@ -139,11 +147,6 @@ header earlier. Acts destructively on STR."
         (qword-start nil))
     (labels ((at-end? () (= pos (length str)))
              (at-this? (x) (eq (aref str pos) x))
-             (looking-at? (regex)
-               (cl-ppcre:scan
-                (append '(:sequence :start-anchor)
-                        (list (cl-ppcre:parse-string regex)))
-                str :start pos))
              (skip-over (chars &optional negate?)
                (setf pos (skip-chars str pos chars :negate? negate?)))
              (skip-nonwhite ()
@@ -162,7 +165,7 @@ header earlier. Acts destructively on STR."
                  ;; This is the bit where we act destructively on STR. If the
                  ;; next character isn't a space, we need one, so replace the
                  ;; previous character by one.
-                 (unless (looking-at? "[ \t]")
+                 (unless (looking-at? str "[ \t]" :start pos)
                    (setf (aref str (1- pos)) #\Space)
                    (decf pos))
                  (setf bol pos)
@@ -193,7 +196,7 @@ header earlier. Acts destructively on STR."
             ;; At the moment, we don't have any next place that we can break, so
             ;; skip forward until we find somewhere to do so. Of course, we'd
             ;; better be careful to skip qwords correctly.
-            (if (looking-at? "=\\?[^=]")
+            (if (looking-at? str "=\\?[^=]" :start pos)
                 (progn
                   (unless first (setf qword-start pos))
                   (skip-over '(#\Space #\Tab #\Newline #\Return #\=) t))
@@ -208,7 +211,59 @@ header earlier. Acts destructively on STR."
 
 (defun rfc2047-format-header (name value)
   "Return a sendable version of the given header data."
-  (format nil "~A: ~{~A~^~%~}"
+  (format nil
+          (concatenate 'string
+                       "~A: ~{~A~^"
+                       (string #\Return)
+                       "~%~}")
           name 
           (rfc2047-fold (rfc2047-encode-header name value)
                         (- (+ 2 (length name))))))
+
+(defun quoted-printable-print (text stream)
+  "Write the given TEXT to STREAM in quoted-printable encoding. Assumes that
+we're starting at the beginning of a line, so have 76 characters to go."
+  (let ((pos 0) (line-pos 0))
+    (labels
+        ((send-it (seq) (princ seq stream) (incf line-pos (length seq)))
+         (newline (&optional soft?)
+           (when soft? (princ #\= stream)) (crlf stream) (setf line-pos 0))
+         (enc-putc ()
+           (let ((encoded (qp-encode-char (aref text pos))))
+             (when (> (+ line-pos (length encoded)) 75)
+               (newline t))
+             (send-it encoded)))
+         (copy-until (end) (send-it (subseq text pos end))))
+      (loop
+         (cond
+           ((eq pos (length text))
+            (return))
+
+           ((eq (aref text pos) #\Newline)
+            (newline)
+            (incf pos))
+
+           ((or (<= 33 (char-code (aref text pos)) 60)
+                (<= 62 (char-code (aref text pos)) 126))
+            (when (= line-pos 75) (newline t))
+            (princ (aref text pos) stream)
+            (incf line-pos)
+            (incf pos))
+
+           ((looking-at? text "[ \t]" :start pos)
+            ;; Trailing spaces need encoding
+            (when (= line-pos 75) (newline t))
+            (let ((end-ws (skip-chars text pos '(#\Space #\Tab))))
+              (if (or (= end-ws (length text))
+                      (member (aref text end-ws) '(#\Newline #\Return))
+                      (> (+ (- end-ws pos) line-pos) 75))
+                  (enc-putc)
+                  (progn
+                    (copy-until end-ws)
+                    (setf pos (1- end-ws))))
+              (incf pos)))
+
+           (t
+            (enc-putc)
+            (incf pos)))))))
+

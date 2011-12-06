@@ -7,6 +7,7 @@
     :components
     ((:file "package")
      (:file "nntp" :depends-on ("package" "message"))
-     (:file "message" :depends-on ("package" "encoding"))
+     (:file "message" :depends-on ("package" "encoding" "mime" "util"))
      (:file "encoding" :depends-on ("package" "util"))
-     (:file "util" :depends-on ("package"))))
+     (:file "util" :depends-on ("package"))
+     (:file "mime" :depends-on ("package" "util"))))
