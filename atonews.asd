@@ -3,7 +3,7 @@
 (in-package :atonews-asd)
 
 (defsystem atonews
-    :depends-on (:usocket :babel :cl-ppcre)
+    :depends-on (:usocket :babel :cl-ppcre :cl-base64)
     :components
     ((:file "package")
      (:file "nntp" :depends-on ("package" "message"))
