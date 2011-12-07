@@ -141,4 +141,5 @@ after START, before the first match for ENDING-REGEX."
                "\\-*<b>The application note you have requested requires"))
           (princ (subseq html pos it) stream)
         (error "Can't find the end of the real content"))
-      (format stream "~%~%</body></html>"))))
+      (format stream "~%~%</body></html>")))
+  "text/html")
