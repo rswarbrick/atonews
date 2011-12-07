@@ -38,15 +38,20 @@ RFC-2822. Uses the local time-zone if TIME-ZONE is not supplied."
             (if (>= zone 0) #\+ #\-)
             (floor (* zone 100)))))
 
-(defun make-message-fragment (id subject from &key date)
+(defun make-message-fragment (id subject from &key date url)
   "Make a new message fragment with the given ID, SUBJECT and author (FROM). All
 four arguments should be strings and, if DATE is not given, it is set to the
 current date."
-  (make-instance 'message-fragment
-                 :id id
-                 :from from
-                 :subject subject
-                 :date (or date (universal-time-to-2822 (get-universal-time)))))
+  (let ((mf
+         (make-instance (if url 'http-message-fragment 'message-fragment)
+                        :id id
+                        :from from
+                        :subject subject
+                        :date (or date (universal-time-to-2822
+                                        (get-universal-time))))))
+    (when url
+      (setf (slot-value mf 'url) url))
+    mf))
 
 (defgeneric list-headers (news-source)
   (:documentation

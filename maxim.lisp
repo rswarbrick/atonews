@@ -71,7 +71,8 @@ of the form app-notes/index.mvp/id/5030, so just grab the number at the end)"
                current-date new-date)
          (push (make-message-fragment (maxim-url-to-message-id url)
                                       title "noreply@maxim-ic.com"
-                                      :date new-date)
+                                      :date new-date
+                                      :url url)
                acc)))
     (nreverse acc)))
 
