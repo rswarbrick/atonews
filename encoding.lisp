@@ -64,12 +64,14 @@ encoding. This will either be at whitespace or at the end of STR."
        (setf pos end))
     pos))
 
+(defun qp-encode-char (ch)
+  "Definitely encode the given character in quoted-printable encoding."
+  (format nil "~{=~2,'0X~}"
+          (coerce (babel:string-to-octets (string ch)) 'list)))
+
 (defun rfc2047-encode-char (ch)
   "Returns a string that encodes the given char"
-  (if (quoted-printable-self-representable? ch)
-      (string ch)
-      (format nil "~{=~2,'0X~}"
-              (coerce (babel:string-to-octets (string ch)) 'list))))
+  (if (quoted-printable-self-representable? ch) (string ch) (qp-encode-char ch)))
 
 (defun rfc2047-encode (str start end &optional (max-quot-length 75))
   "Encode the subsequence as quoted printable as per rfc2047."

@@ -11,5 +11,5 @@
      (:file "encoding" :depends-on ("package" "util"))
      (:file "util" :depends-on ("package"))
      (:file "mime" :depends-on ("package" "util"))
-     (:file "news-source" :depends-on ("package" "util"))
+     (:file "news-source" :depends-on ("package" "util" "mime" "message"))
      (:file "maxim" :depends-on ("package" "news-source" "util"))))

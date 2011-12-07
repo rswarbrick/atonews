@@ -52,3 +52,9 @@ result. Return this true result."
     (position-if (lambda (x) (setf ans (funcall func x)))
                  sequence :from-end from-end :start start :end end)
     ans))
+
+(defun hash-values (hashtable)
+  "Return all the values in HASHTABLE."
+  (let ((acc nil))
+    (maphash (lambda (key val) (declare (ignore key)) (push val acc)) hashtable)
+    acc))

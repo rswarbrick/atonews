@@ -143,3 +143,5 @@ after START, before the first match for ENDING-REGEX."
         (error "Can't find the end of the real content"))
       (format stream "~%~%</body></html>")))
   "text/html")
+
+(defmethod author-address ((ns maxim-appnotes-ns)) "noreply@maxim-ic.com")
