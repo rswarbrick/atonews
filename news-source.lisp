@@ -22,6 +22,28 @@
 (defclass http-message-fragment (message-fragment)
   ((url :initarg :url :reader url)))
 
+(defgeneric list-headers (news-source)
+  (:documentation
+   "Return a list of message fragments corresponding to the new articles
+available from the news source. It doesn't matter if a previously seen article
+is returned, but in that case it should have the same Message-id as before."))
+
+(defgeneric parse-source-headers (news-source contents)
+  (:documentation
+   "Responsible for parsing the data retrieved by the news source and making
+message fragments."))
+
+(defgeneric expand-message-fragment (news-source fragment)
+  (:documentation
+   "Responsible for returning the contents of the message denoted by
+fragment. Returns (VALUES MIME-TYPE DATA)"))
+
+(defgeneric filter-source-contents (news-source data stream)
+  (:documentation
+   "DATA is a string buffer holding some data (probably pulled from a URL). This
+function must write data to STREAM, a text stream and return the relevant
+mime-type."))
+
 (defun universal-time-to-2822 (ut &optional time-zone)
   "Return a string representing the time given by UT in the format mandated by
 RFC-2822. Uses the local time-zone if TIME-ZONE is not supplied."
@@ -53,20 +75,21 @@ current date."
       (setf (slot-value mf 'url) url))
     mf))
 
-(defgeneric list-headers (news-source)
-  (:documentation
-   "Return a list of message fragments corresponding to the new articles
-available from the news source. It doesn't matter if a previously seen article
-is returned, but in that case it should have the same Message-id as before."))
-
-(defgeneric parse-source-headers (news-source contents)
-  (:documentation
-   "Responsible for parsing the data retrieved by the news source and making
-message fragments."))
-
 (defmethod list-headers ((source http-source))
   (multiple-value-bind (contents status)
       (drakma:http-request (list-url source) :proxy *proxy*)
     (unless (= 200 status)
       (error "Couldn't retrieve URL (~A) via Drakma" (list-url source)))
     (parse-source-headers source contents)))
+
+(defmethod expand-message-fragment ((source news-source)
+                                    (fragment http-message-fragment))
+  (multiple-value-bind (contents status)
+      (drakma:http-request (url fragment) :proxy *proxy*)
+    (unless (= 200 status)
+      (error "Couldn't retrieve URL (~A) via Drakma" (list-url source)))
+    (let* ((mime-type nil)
+           (data (with-output-to-string (str)
+                   (setf mime-type
+                         (filter-source-contents source contents str)))))
+      (values mime-type data))))

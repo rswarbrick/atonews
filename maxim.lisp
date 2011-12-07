@@ -79,3 +79,66 @@ of the form app-notes/index.mvp/id/5030, so just grab the number at the end)"
 
 (defmethod parse-source-headers ((source maxim-appnotes-ns) contents)
   (maxim-all-headers contents))
+
+(defun matches-before (string regex ending-regex &key (start 0))
+  "Return a list of arrays, where you get one for each match for REGEX in STRING
+after START, before the first match for ENDING-REGEX."
+  (let ((acc))
+    (cl-ppcre:do-scans (mt-st mt-e reg-st reg-end regex string nil
+                              :start start
+                              :end (or (cl-ppcre:scan ending-regex string
+                                                      :start start)
+                                       (length string)))
+      (push (map 'vector (lambda (a b)
+                           (subseq string a b))
+                 reg-st reg-end)
+            acc))
+    (nreverse acc)))
+
+(defmethod filter-source-contents ((news-source maxim-appnotes-ns) html stream)
+  (format stream "<html>~%<head>~%")
+  (let ((pos 0))
+    (flet ((search-forward (regex)
+             (multiple-value-bind (start end match-starts match-ends)
+                 (cl-ppcre:scan regex html :start pos)
+               (declare (ignore start))
+               (when end
+                 (setf pos end)
+                 (map 'vector (lambda (a b) (subseq html a b))
+                      match-starts match-ends)))))
+      (aif+ (search-forward "<title>(.*?)</title>")
+          (format stream
+                  "  <title>~A</title>~%</head>~%~%<body>~%" (aref it 0))
+        (error "Could not find title in page source"))
+      (aif+ (search-forward "<!--\\s*BEGIN:\\s*TYPE,TITLE,AUTHOR\\s*-->")
+          nil
+        (error "Could not find beginning of content"))
+      (aif+ (search-forward "grayb5.*\n?\\s*(.*)")
+          (format stream "  <h3>~A</h3>~%" (aref it 0))
+        (error "Could not find tutorial heading"))
+      (aif+ (search-forward "<h1>(.*?)\\s*[\\n<]")
+          (format stream "  <h1>~A</h1>~%" (aref it 0))
+        (error "Could not find H1 title"))
+      (when (search-forward "<!-- BEGIN: AUTHOR INFO -->")
+        (aif+
+            (matches-before html
+                            "td class=\"grayb5.*\\n?\\s*(.*?)\\s*</td"
+                            "END: AUTHOR INFO"
+                            :start pos)
+            (format stream "  <p>Author~A: ~{~A~^, ~}</p>~%"
+                    (if (cdr it) "s" "")
+                    (mapcar (lambda (x) (aref x 0)) it))))
+      (aif+ (search-forward "href=\"(.*\\.pdf)\">Download, PDF Format")
+          (format stream "  <p><a href=\"~A\">PDF Version</a></p>~%~%"
+                  (aref it 0)))
+      ;; Go back to the beginning (since the PDF link is miles down)
+      (setf pos 0)
+      (unless (search-forward "<!--\\s*END:\\s*TYPE,TITLE,AUTHOR\\s*-->")
+        (error "Can't find the start of the real content"))
+      (aif+ (map-find
+             (lambda (regex) (cl-ppcre:scan regex html :start pos))
+             '("<!--\\s*BEGIN:\\s*RELATED PARTS\\s*-->"
+               "\\-*<b>The application note you have requested requires"))
+          (princ (subseq html pos it) stream)
+        (error "Can't find the end of the real content"))
+      (format stream "~%~%</body></html>"))))

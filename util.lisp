@@ -40,3 +40,15 @@ than BASE so that the sum of these numbers with increasing powers of BASE is N."
   (princ #\Return stream)
   (princ #\Newline stream)
   (values))
+
+(defmacro aif+ (test then &body else)
+  "Anaphoric IF, which also allows multiple forms in the ELSE part."
+  `(let ((it ,test)) (if it ,then ,@else)))
+
+(defun map-find (func sequence &key from-end (start 0) end)
+  "Apply FUNC to each element of SEQUENCE in turn until it returns a true
+result. Return this true result."
+  (let ((ans nil))
+    (position-if (lambda (x) (setf ans (funcall func x)))
+                 sequence :from-end from-end :start start :end end)
+    ans))
