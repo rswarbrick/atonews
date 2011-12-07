@@ -69,10 +69,11 @@ of the form app-notes/index.mvp/id/5030, so just grab the number at the end)"
          (unless new-pos (return))
          (setf pos new-pos
                current-date new-date)
-         (push (make-message-fragment (maxim-url-to-message-id url)
-                                      title "noreply@maxim-ic.com"
-                                      :date new-date
-                                      :url url)
+         (push (make-message-fragment
+                (maxim-url-to-message-id url)
+                title "noreply@maxim-ic.com"
+                :date new-date
+                :url (concatenate 'string "http://www.maxim-ic.com/" url))
                acc)))
     (nreverse acc)))
 
