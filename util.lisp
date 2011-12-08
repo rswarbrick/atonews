@@ -45,6 +45,10 @@ than BASE so that the sum of these numbers with increasing powers of BASE is N."
   "Anaphoric IF, which also allows multiple forms in the ELSE part."
   `(let ((it ,test)) (if it ,then ,@else)))
 
+(defmacro awhen (test &body then)
+  "Anaphoric WHEN."
+  `(let ((it ,test)) (when it ,@then)))
+
 (defun map-find (func sequence &key from-end (start 0) end)
   "Apply FUNC to each element of SEQUENCE in turn until it returns a true
 result. Return this true result."
