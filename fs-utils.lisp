@@ -72,3 +72,47 @@ automatically created, so we return NIL if it doesn't exist."
   (awhen (get-config-dir)
     (cl-fad:file-exists-p
      (merge-pathnames (make-pathname :name "atonews.lisp") it))))
+
+(defvar *lock-file-fd* nil)
+
+(defun lock-file ()
+  (merge-pathnames (make-pathname :name "lockfile") (ensure-data-dir)))
+
+(defun try-lock-file? ()
+  "Returns T and acquires the lockfile (locking it) if possible. Otherwise
+returns NIL."
+  (or (and *lock-file-fd* t)
+      (handler-case
+          (locally (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
+            (setf *lock-file-fd*
+                  (sb-posix:open (lock-file)
+                                 (logior sb-posix:o-wronly sb-posix:o-creat)
+                                 (logior sb-posix:s-irusr sb-posix:s-iwusr)))
+            (= 0
+               (sb-posix:fcntl *lock-file-fd* sb-posix:f-setlk
+                               (make-instance 'sb-posix:flock
+                                              :type sb-posix:f-wrlck
+                                              :whence sb-posix:seek-set
+                                              :start 0
+                                              :len 1))))
+        ;; Catch things like trying to create a file we're not allowed to create
+        ;; and the like.
+        (sb-posix:syscall-error (err)
+          (declare (ignore err))
+          (release-lock-file)
+          nil))))
+
+(defun release-lock-file ()
+  (when *lock-file-fd*
+    (sb-posix:close *lock-file-fd*)
+    (setf *lock-file-fd* nil))
+  (values))
+
+(defmacro with-lock-file (&body body)
+  "Lock the lockfile and run BODY. Throws an error if it can't acquire the
+lock."
+  `(unwind-protect
+        (aif+ (not (try-lock-file?))
+            (error "Could not acquire lock file.")
+          ,@body)
+     (release-lock-file)))
