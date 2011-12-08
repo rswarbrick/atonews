@@ -44,7 +44,7 @@ with gray-stream's close)"
 
 (defmethod hear ((c news-connection) type)
   "Get a response from the news server. TYPE should be :TEXT or :STATUS for the
-  type of response we're expecting. Strips the trailing ^M"
+type of response we're expecting. Strips the trailing ^M"
   (when (dbg c)
     (format t "READ. Type ~A~%" type)
     (force-output))
@@ -82,12 +82,17 @@ with gray-stream's close)"
       (declare (ignore cnd))
       (close c))))
 
+(define-condition nntp-server-error (error)
+  ((status :initarg :status :reader status)
+   (text :initarg :text :reader text)
+   (trying-to :initarg :trying-to :reader trying-to)))
+
 (defun expect-status (expected connection &optional trying-to)
   "Check we get the expected status, otherwise throw an error."
   (multiple-value-bind (stat reply) (hear connection :status)
     (unless (= stat expected)
-      (error "Server unhappy~@[ when trying to ~A~]. Error: ~D. (~A)"
-             trying-to stat reply))))
+      (error 'nntp-server-error
+             :text reply :status stat :trying-to trying-to))))
 
 (defmethod quit ((c news-connection))
   "Say goodbye and close the connection. Don't bother returning anything: the
@@ -110,6 +115,36 @@ only answer is 205."
    c)
   (expect-status 240 c "post message"))
 
+(defmethod select-group ((c news-connection) group-name)
+  "Select the given group."
+  (say (format nil "group ~A" group-name) c)
+  (expect-status 211 c (format nil "select group ~A" group-name)))
+
+(define-condition no-such-article (nntp-server-error)
+  ((article :initarg :article)))
+
+(defmethod get-header ((c news-connection) header-name message-id)
+  "Get a header by MessageID in the current group. Returns NIL if the article
+existed but didn't contain the given header. Throws a no-such-article error if
+the article doesn't exist."
+  (say (format nil "hdr ~A <~A>" header-name message-id) c)
+  (handler-case
+      (expect-status 221 c "search for header")
+    (nntp-server-error (err)
+      ;; If the article didn't exist, specialise to a no-such-article!
+      (if (= (status err) 430)
+          (error 'no-such-article
+                 :article message-id
+                 :trying-to (trying-to err)
+                 :text (text err)
+                 :status (status err))
+          (error err))))
+  ;; I expect exactly one line of text back, of the form <msgid> header.
+  (let ((line (first (hear c :text))))
+    (aif+ (position #\> line)
+        (subseq line (+ it 2))
+      (error "Unexpected reply to HDR command: ~S" line))))
+
 (defmacro with-connection ((conn-sym server &optional dbg) &body body)
   "Run the forms in BODY with CONN-SYM bound to a connection described by
 SERVER."
@@ -117,3 +152,15 @@ SERVER."
      (expect-status 200 ,conn-sym "establish connection")
      (unwind-protect (progn ,@body)
        (quit ,conn-sym))))
+
+(defun filter-new-message-ids (server msg-ids)
+  "Return the subset of MSG-IDS that don't exist on the server (each MSG-ID
+should be 'bare', that is, with no <> around it)."
+  (with-connection (conn server)
+    (remove-if
+     (lambda (msg-id)
+       (handler-case (get-header conn "subject" msg-id)
+         (no-such-article (c)
+           (declare (ignore c))
+           nil)))
+     msg-ids)))
