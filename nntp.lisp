@@ -159,7 +159,7 @@ should be 'bare', that is, with no <> around it)."
   (with-connection (conn server)
     (remove-if
      (lambda (msg-id)
-       (handler-case (get-header conn "subject" msg-id)
+       (handler-case (or (get-header conn "subject" msg-id))
          (no-such-article (c)
            (declare (ignore c))
            nil)))
