@@ -105,7 +105,11 @@ returns NIL."
 (defun release-lock-file ()
   (when *lock-file-fd*
     (sb-posix:close *lock-file-fd*)
-    (setf *lock-file-fd* nil))
+    (setf *lock-file-fd* nil)
+    ;; Try deleting the file to tidy up. The locking scheme works either way,
+    ;; though, so we needn't try very hard.
+    (handler-case (delete-file (lock-file))
+      (file-error (e) (declare (ignore e)))))
   (values))
 
 (defmacro with-lock-file (&body body)
