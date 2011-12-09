@@ -14,8 +14,9 @@ the news source.")
   ((list-url :reader list-url
              :documentation "The URL for the listing page."))
   (:documentation
-   "A news source where you get the data via http. To use this, define a method
-   on PARSE-SOURCE-HEADERS and return HTTP-MESSAGE-FRAGMENTs."))
+   "A news source where you get the data via http. To use this, set LIST-URL
+with an initform, define a method on NEXT-MESSAGE-FRAGMENT and define
+FILTER-SOURCE-CONTENTS."))
 
 (defclass message-fragment ()
   ((id :initarg :id :reader id)
@@ -44,11 +45,6 @@ update the message list, push new messages to GROUP and update
 and update *LAST-READ-TIMES* (on disk, too)."))
 
 ;; Methods to override ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defgeneric parse-source-headers (news-source contents)
-  (:documentation
-   "Responsible for parsing the data retrieved by the news source and making
-message fragments."))
-
 (defgeneric filter-source-contents (news-source data stream)
   (:documentation
    "DATA is a string buffer holding some data (probably pulled from a URL). This
@@ -58,6 +54,14 @@ mime-type."))
 (defgeneric update-frequency (news-source)
   (:documentation "Should return the frequency to update the given source,
 measured in minimum seconds between updates."))
+
+(defgeneric next-message-fragment (source contents pos extra)
+  (:documentation
+   "Find and extract the next message fragment in SOURCE. On success, should
+return (VALUES FRAGMENT END-POS &optional OTHERS), where END-POS is the end of the
+text of the hit you found (so the next call can start there). EXTRA is
+initially nil, then gets set to the previous return of OTHERS. Return (VALUES
+NIL NIL) if no message found."))
 
 ;; Stuff you probably don't need to override ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defgeneric list-headers (news-source)
@@ -81,6 +85,12 @@ controls what goes in the Newsgroups: line."))
   (:documentation
    "Return the correct From: address to use for the message. Specialise for
 either your message fragment (higher precedence) or your news source."))
+
+(defgeneric find-message-fragments (source contents)
+  (:documentation
+   "Responsible for parsing the data from the news source that lists the new
+messages and making message fragments from them. Instead of overriding this,
+consider overriding next-message-fragment."))
 
 ;; Methods defined for general sources etc. ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmethod update-frequency ((source news-source)) (* 24 3600))
@@ -124,7 +134,7 @@ current date."
       (drakma:http-request (list-url source) :proxy *proxy*)
     (unless (= 200 status)
       (error "Couldn't retrieve URL (~A) via Drakma" (list-url source)))
-    (parse-source-headers source contents)))
+    (find-message-fragments source contents)))
 
 (defmethod expand-message-fragment ((source news-source)
                                     (fragment http-message-fragment))
@@ -273,3 +283,13 @@ current date."
 (defmethod update-news-source ((source news-source) (group nntp-group))
   (when (needs-update? source) (force-update-news-source source group))
   (values))
+
+(defmethod find-message-fragments ((source news-source) contents)
+  (let ((acc) (pos 0) (extra nil))
+    (loop
+       (multiple-value-bind (frag new-pos new-extra)
+           (next-message-fragment source contents pos extra)
+         (unless frag (return))
+         (push frag acc)
+         (setf pos new-pos extra new-extra)))
+    (nreverse acc)))

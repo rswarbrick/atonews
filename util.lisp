@@ -62,3 +62,22 @@ result. Return this true result."
   (let ((acc nil))
     (maphash (lambda (key val) (declare (ignore key)) (push val acc)) hashtable)
     acc))
+
+(defun ymd-to-ut (year month date)
+  "Convert a YEAR, MONTH, DATE to universal time."
+  (encode-universal-time 0 0 0 date month year))
+
+(defmacro bind-scan-matches (match-starts match-ends
+                             (&rest variables) &body body)
+  "Call BODY with VARIABLES bound to successive bits of the match."
+  (let ((st-sym (gensym)) (ed-sym (gensym)))
+    `(let* ((,st-sym ,match-starts) (,ed-sym ,match-ends)
+            ,@(let ((acc))
+                   (do ((vars variables (cdr vars)) (n 0 (1+ n)))
+                       ((null vars))
+                     (when (car vars)
+                       (push `(,(car vars)
+                                (subseq html (elt ,st-sym ,n) (elt ,ed-sym ,n)))
+                             acc)))
+                   (nreverse acc)))
+       ,@body)))
