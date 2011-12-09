@@ -44,21 +44,10 @@ update the message list, push new messages to GROUP and update
 and update *LAST-READ-TIMES* (on disk, too)."))
 
 ;; Methods to override ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defgeneric list-headers (news-source)
-  (:documentation
-   "Return a list of message fragments corresponding to the new articles
-available from the news source. It doesn't matter if a previously seen article
-is returned, but in that case it should have the same Message-id as before."))
-
 (defgeneric parse-source-headers (news-source contents)
   (:documentation
    "Responsible for parsing the data retrieved by the news source and making
 message fragments."))
-
-(defgeneric expand-message-fragment (news-source fragment)
-  (:documentation
-   "Responsible for returning the contents of the message denoted by
-fragment. Returns (VALUES MIME-TYPE DATA)"))
 
 (defgeneric filter-source-contents (news-source data stream)
   (:documentation
@@ -66,23 +55,35 @@ fragment. Returns (VALUES MIME-TYPE DATA)"))
 function must write data to STREAM, a text stream and return the relevant
 mime-type."))
 
+(defgeneric update-frequency (news-source)
+  (:documentation "Should return the frequency to update the given source,
+measured in minimum seconds between updates."))
+
+;; Stuff you probably don't need to override ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defgeneric list-headers (news-source)
+  (:documentation
+   "Return a list of message fragments corresponding to the new articles
+available from the news source. It doesn't matter if a previously seen article
+is returned, but in that case it should have the same Message-id as before."))
+
+(defgeneric expand-message-fragment (news-source fragment)
+  (:documentation
+   "Responsible for returning the contents of the message denoted by
+fragment. Returns (VALUES MIME-TYPE DATA)"))
+
 (defgeneric make-message-from-fragment (news-source fragment group)
   (:documentation
    "Responsible for producing a (probably multipart mime) message from the given
 fragment. GROUP is the newsgroup on some server that we're posting to (and
 controls what goes in the Newsgroups: line."))
 
-(defgeneric update-frequency (news-source)
-  (:documentation "Should return the frequency to update the given source,
-measured in minimum seconds between updates."))
-
-(defmethod update-frequency ((source news-source))
-  (* 24 3600))
-
 (defgeneric author-address (message-or-source)
   (:documentation
    "Return the correct From: address to use for the message. Specialise for
 either your message fragment (higher precedence) or your news source."))
+
+;; Methods defined for general sources etc. ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmethod update-frequency ((source news-source)) (* 24 3600))
 
 (defmethod author-address ((src news-source)) nil)
 (defmethod author-address ((frag message-fragment)) nil)
