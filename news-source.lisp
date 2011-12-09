@@ -229,7 +229,8 @@ with sensible ones. Returns (VALUES FIXED-HTML BINARY-PARTS)."
                       (if other-parts
                           (make-multipart-related main-part other-parts)
                           main-part)
-                      "Message-ID" (id fragment))))))
+                      "Message-ID" (id fragment)
+                      "Date" (date fragment))))))
 
 (defun read-last-read-times ()
   "Update *last-read-times* from the data file."
