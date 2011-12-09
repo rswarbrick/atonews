@@ -13,6 +13,7 @@
                (:file "message" :depends-on ("package" "encoding" "mime" "util"))
                (:file "encoding" :depends-on ("package" "util"))
                (:file "util" :depends-on ("package"))
+               (:file "string-pointer" :depends-on ("package"))
                (:file "mime" :depends-on ("package" "util"))
                (:file "news-source" :depends-on ("package" "util" "mime" "message" "nntp"))
                (:file "fs-utils" :depends-on ("package" "util"))))
