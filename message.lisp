@@ -17,11 +17,21 @@
   (princ (rfc2047-format-header (key h) (value h)) stream)
   (crlf stream))
 
-(defun make-message (from subject groups &optional body)
+(defun make-message (from subject groups &optional body &rest other-headers)
+  "Make a message with the given From:, Subject: and Newsgroups: headers. If
+given, also set the body. OTHER-HEADERS should be a list (of even length) of
+pairs of header names and values."
+  (unless (evenp (length other-headers))
+    (error "OTHER-HEADERS should have even length."))
   (let ((msg (make-instance 'message)))
     (push (make-header "From" from) (headers msg)) 
     (push (make-header "Newsgroups" groups) (headers msg))
     (push (make-header "Subject" subject) (headers msg))
+    (do ((rest other-headers (cddr rest)))
+        ((null rest))
+      (let ((header-name (first rest))
+            (header-value (second rest)))
+        (push (make-header header-name header-value) (headers msg))))
     (when body (setf (body msg) body))
     msg))
 

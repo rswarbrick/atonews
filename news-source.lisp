@@ -223,7 +223,8 @@ current date."
                       (name group)
                       (if other-parts
                           (make-multipart-related main-part other-parts)
-                          main-part))))))
+                          main-part)
+                      "Message-ID" (id fragment))))))
 
 (defun read-last-read-times ()
   "Update *last-read-times* from the data file."
