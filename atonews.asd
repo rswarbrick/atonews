@@ -11,9 +11,8 @@
      (:file "encoding" :depends-on ("package" "util"))
      (:file "util" :depends-on ("package"))
      (:file "mime" :depends-on ("package" "util"))
-     (:file "news-source" :depends-on ("package" "util" "mime" "message"))
+     (:file "news-source" :depends-on ("package" "util" "mime" "message" "nntp"))
      (:file "fs-utils" :depends-on ("package" "util"))
      (:file "maxim" :depends-on ("package" "news-source" "util"))
-
      (:file "atonews" :depends-on ("package" "fs-utils" "news-source"
                                              "maxim"))))
