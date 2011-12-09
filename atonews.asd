@@ -19,5 +19,5 @@
                (:file "fs-utils" :depends-on ("package" "util"))))
      (:module sources
               :depends-on (core)
-              :components ((:file "maxim")))
+              :components ((:file "maxim") (:file "edn")))
      (:file "atonews" :depends-on (core sources))))
