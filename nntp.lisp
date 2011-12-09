@@ -7,6 +7,18 @@
 (defun make-server (&optional (host "localhost") (port 119))
   (make-instance 'nntp-server :host host :port port))
 
+(defclass nntp-group ()
+  ((name :initarg :name :reader name)
+   (server :initarg :server :reader server)))
+
+(defun make-group (name &key server host port)
+  "Make an NNTP-GROUP instance. If SERVER is given, use that as the
+server. Otherwise, create a server via MAKE-SERVER with the given host and
+port (defaults to localhost:119)"
+  (make-instance 'nntp-group
+                 :server (or server (make-server host port))
+                 :name name))
+
 (defclass news-connection ()
   ((server :initarg :server :reader server)
    (socket :initarg :socket :accessor socket)

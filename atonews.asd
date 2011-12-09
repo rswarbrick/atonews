@@ -13,4 +13,7 @@
      (:file "mime" :depends-on ("package" "util"))
      (:file "news-source" :depends-on ("package" "util" "mime" "message"))
      (:file "fs-utils" :depends-on ("package" "util"))
-     (:file "maxim" :depends-on ("package" "news-source" "util"))))
+     (:file "maxim" :depends-on ("package" "news-source" "util"))
+
+     (:file "atonews" :depends-on ("package" "fs-utils" "news-source"
+                                             "maxim"))))

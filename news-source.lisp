@@ -3,6 +3,10 @@
 (defvar *proxy* '("localhost" 3128)
   "A proxy to pipe requests through. Set to nil if there isn't one.")
 
+(defvar *last-read-times* nil
+  "An assoc, keyed by class name, whose value is the last time that class read
+the news source.")
+
 (defclass news-source ()
   ())
 
@@ -22,6 +26,24 @@
 (defclass http-message-fragment (message-fragment)
   ((url :initarg :url :reader url)))
 
+;; Interface to use ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defgeneric new-headers (news-source server)
+  (:documentation
+   "Returns a list of MESSAGE-FRAGMENT objects, one for each header found at
+NEWS-SOURCE that we haven't stored on the server before."))
+
+(defgeneric update-news-source (news-source group)
+  (:documentation
+   "Checks to see whether we've updated the given news source recently. If not,
+update the message list, push new messages to GROUP and update
+*LAST-READ-TIMES*"))
+
+(defgeneric force-update-news-source (news-source group)
+  (:documentation
+   "Update the new message list from NEWS-SOURCE, push the new messages to GROUP
+and update *LAST-READ-TIMES* (on disk, too)."))
+
+;; Methods to override ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defgeneric list-headers (news-source)
   (:documentation
    "Return a list of message fragments corresponding to the new articles
@@ -44,10 +66,18 @@ fragment. Returns (VALUES MIME-TYPE DATA)"))
 function must write data to STREAM, a text stream and return the relevant
 mime-type."))
 
-(defgeneric make-message-from-fragment (news-source fragment destination)
+(defgeneric make-message-from-fragment (news-source fragment group)
   (:documentation
    "Responsible for producing a (probably multipart mime) message from the given
-fragment. DESTINATION is the address that should go in the Newsgroups: line."))
+fragment. GROUP is the newsgroup on some server that we're posting to (and
+controls what goes in the Newsgroups: line."))
+
+(defgeneric update-frequency (news-source)
+  (:documentation "Should return the frequency to update the given source,
+measured in minimum seconds between updates."))
+
+(defmethod update-frequency ((source news-source))
+  (* 24 3600))
 
 (defgeneric author-address (message-or-source)
   (:documentation
@@ -178,7 +208,7 @@ current date."
 
 (defmethod make-message-from-fragment ((source news-source)
                                        (fragment message-fragment)
-                                       destination)
+                                       (group nntp-group))
   (multiple-value-bind (mime-type body-data)
       (expand-message-fragment source fragment)
     (let ((other-parts nil))
@@ -189,7 +219,46 @@ current date."
         (make-message (or (author-address fragment)
                           (author-address source))
                       (subject fragment)
-                      destination
+                      (name group)
                       (if other-parts
                           (make-multipart-related main-part other-parts)
                           main-part))))))
+
+(defun read-last-read-times ()
+  "Update *last-read-times* from the data file."
+  (setf *last-read-times* (read-data-file "last-read-times" :err nil)))
+
+(defun save-last-read-times ()
+  "Store *last-read-times* to data file."
+  (set-data-file "last-read-times" *last-read-times*))
+
+(defun needs-update? (source)
+  (unless *last-read-times* (read-last-read-times))
+  (aif+ (assoc (class-name (class-of source)) *last-read-times* :test 'equalp)
+      (> (- (get-universal-time) (cdr it)) (update-frequency source))
+    t))
+
+(defun mark-just-read (source)
+  (aif+ (assoc (class-name (class-of source)) *last-read-times* :test 'equalp)
+      (setf (cdr it) (get-universal-time))
+    (push (cons (class-name (class-of source)) (get-universal-time))
+          *last-read-times*))
+  (save-last-read-times))
+
+(defmethod new-headers ((source news-source) (server nntp-server))
+  (let* ((all-headers (list-headers source))
+         (new-ids (filter-new-message-ids server (mapcar #'id all-headers))))
+    (mapcar (lambda (id) (find id all-headers :key #'id :test #'string=))
+            new-ids)))
+
+(defmethod force-update-news-source ((source news-source) (group nntp-group))
+  (mapcar (lambda (fragment)
+            (with-connection (conn (server group))
+              (post conn (make-message-from-fragment source fragment group))))
+          (new-headers source (server group)))
+  (mark-just-read source)
+  (values))
+
+(defmethod update-news-source ((source news-source) (group nntp-group))
+  (when (needs-update? source) (force-update-news-source source group))
+  (values))
