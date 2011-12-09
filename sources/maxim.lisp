@@ -123,4 +123,3 @@ after START, before the first match for ENDING-REGEX."
       (format stream "~%~%</body></html>")))
   "text/html")
 
-(defmethod author-address ((ns maxim-appnotes-ns)) "noreply@maxim-ic.com")
