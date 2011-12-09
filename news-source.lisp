@@ -164,7 +164,11 @@ current date."
           (error "Location is not a fully qualified URL.")))))
 
 (defun fixup-html-links (fragment html)
-  "Go through HTML as follows: For each img src, if I can download the relevant image, encode it and replace the link with a CID one. If not, replace it with a fully qualified URL (the news viewer may or may not complain, but it's the most useful thing we can do). Also try to replace relative URLs in <a href=...> links with sensible ones. Returns (VALUES FIXED-HTML BINARY-PARTS)."
+  "Go through HTML as follows: For each img src, if I can download the relevant
+image, encode it and replace the link with a CID one. If not, replace it with a
+fully qualified URL (the news viewer may or may not complain, but it's the most
+useful thing we can do). Also try to replace relative URLs in <a href=...> links
+with sensible ones. Returns (VALUES FIXED-HTML BINARY-PARTS)."
   (let ((scratch html)
         (parts (make-hash-table :test 'equal))
         (domain (url-domain (url fragment))))
