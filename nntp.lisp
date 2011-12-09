@@ -98,7 +98,15 @@ type of response we're expecting. Strips the trailing ^M"
 (define-condition nntp-server-error (error)
   ((status :initarg :status :reader status)
    (text :initarg :text :reader text)
-   (trying-to :initarg :trying-to :reader trying-to)))
+   (trying-to :initarg :trying-to :reader trying-to))
+  (:report
+   (lambda (condition stream)
+     (format stream
+             "Unexpected status (~D)~@[ when trying to ~A~]~
+~@[~%  Server says: ~A~]"
+             (status condition)
+             (trying-to condition)
+             (text condition)))))
 
 (defun expect-status (expected connection &optional trying-to)
   "Check we get the expected status, otherwise throw an error."
