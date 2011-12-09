@@ -16,7 +16,8 @@
 server. Otherwise, create a server via MAKE-SERVER with the given host and
 port (defaults to localhost:119)"
   (make-instance 'nntp-group
-                 :server (or server (make-server host port))
+                 :server (or server (make-server (or host "localhost")
+                                                 (or port 119)))
                  :name name))
 
 (defclass news-connection ()
