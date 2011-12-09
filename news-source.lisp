@@ -81,11 +81,6 @@ fragment. Returns (VALUES MIME-TYPE DATA)"))
 fragment. GROUP is the newsgroup on some server that we're posting to (and
 controls what goes in the Newsgroups: line."))
 
-(defgeneric author-address (message-or-source)
-  (:documentation
-   "Return the correct From: address to use for the message. Specialise for
-either your message fragment (higher precedence) or your news source."))
-
 (defgeneric find-message-fragments (source contents)
   (:documentation
    "Responsible for parsing the data from the news source that lists the new
@@ -94,9 +89,6 @@ consider overriding next-message-fragment."))
 
 ;; Methods defined for general sources etc. ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmethod update-frequency ((source news-source)) (* 24 3600))
-
-(defmethod author-address ((src news-source)) nil)
-(defmethod author-address ((frag message-fragment)) nil)
 
 (defun universal-time-to-2822 (ut &optional time-zone)
   "Return a string representing the time given by UT in the format mandated by
@@ -227,8 +219,7 @@ current date."
         (multiple-value-setq (body-data other-parts)
           (fixup-html-links fragment body-data)))
       (let ((main-part (make-text-based-part mime-type body-data)))
-        (make-message (or (author-address fragment)
-                          (author-address source))
+        (make-message (from fragment)
                       (subject fragment)
                       (name group)
                       (if other-parts
