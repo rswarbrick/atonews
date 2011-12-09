@@ -145,10 +145,12 @@ only answer is 205."
   ((article :initarg :article)))
 
 (defmethod get-header ((c news-connection) header-name message-id)
-  "Get a header by MessageID in the current group. Returns NIL if the article
-existed but didn't contain the given header. Throws a no-such-article error if
-the article doesn't exist."
-  (say (format nil "hdr ~A <~A>" header-name message-id) c)
+  "Get a header by MessageID in the current group. The MessageID should contain
+its angle brackets, so looks like <foo@bar.qux>.
+
+Returns NIL if the article existed but didn't contain the
+given header. Throws a no-such-article error if the article doesn't exist."
+  (say (format nil "hdr ~A ~A" header-name message-id) c)
   (handler-case
       (expect-status 221 c "search for header")
     (nntp-server-error (err)
@@ -176,7 +178,7 @@ SERVER."
 
 (defun filter-new-message-ids (server msg-ids)
   "Return the subset of MSG-IDS that don't exist on the server (each MSG-ID
-should be 'bare', that is, with no <> around it)."
+should be clothed in its angle brackets, so of the form <blah@test.net>)."
   (with-connection (conn server)
     (remove-if
      (lambda (msg-id)
