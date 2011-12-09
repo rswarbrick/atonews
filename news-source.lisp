@@ -256,7 +256,16 @@ current date."
 (defmethod force-update-news-source ((source news-source) (group nntp-group))
   (mapcar (lambda (fragment)
             (with-connection (conn (server group))
-              (post conn (make-message-from-fragment source fragment group))))
+              (handler-case
+                  (post conn
+                        (make-message-from-fragment source fragment group))
+                ;; Fret not if posting an article failed. Such things happen, I
+                ;; suppose. Since it doesn't appear on the server, we'll try
+                ;; again next time.
+                ;; TODO: Should there be some error logging here somewhere?
+                (nntp-server-error (e)
+                  (declare (ignore e))
+                  (values)))))
           (new-headers source (server group)))
   (mark-just-read source)
   (values))
