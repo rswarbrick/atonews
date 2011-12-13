@@ -16,7 +16,8 @@
                (:file "string-pointer" :depends-on ("package"))
                (:file "mime" :depends-on ("package" "util"))
                (:file "news-source" :depends-on ("package" "util" "mime" "message" "nntp"))
-               (:file "fs-utils" :depends-on ("package" "util"))))
+               (:file "fs-utils" :depends-on ("package" "util"))
+               (:file "pdftotext" :depends-on ("package"))))
      (:module sources
               :depends-on (core)
               :components ((:file "maxim") (:file "edn")))
