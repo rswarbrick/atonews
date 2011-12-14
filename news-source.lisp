@@ -44,7 +44,7 @@ update the message list, push new messages to GROUP and update
    "Update the new message list from NEWS-SOURCE, push the new messages to GROUP
 and update *LAST-READ-TIMES* (on disk, too)."))
 
-;; Methods to override ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Methods to override for ordinary http sources ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defgeneric filter-source-contents (news-source data stream)
   (:documentation
    "DATA is a string buffer holding some data (probably pulled from a URL). This
@@ -64,6 +64,10 @@ initially nil, then gets set to the previous return of OTHERS. Return (VALUES
 NIL NIL) if no message found."))
 
 ;; Stuff you probably don't need to override ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defgeneric get-header-data (news-source)
+  (:documentation "Actually retrieve the header data for the given news
+source. For example, make an HTTP request or the like."))
+
 (defgeneric list-headers (news-source)
   (:documentation
    "Return a list of message fragments corresponding to the new articles
@@ -106,12 +110,14 @@ RFC-2822. Uses the local time-zone if TIME-ZONE is not supplied."
             (if (>= zone 0) #\+ #\-)
             (floor (* zone 100)))))
 
-(defun make-message-fragment (id subject from &key date url)
+(defun make-message-fragment (id subject from &key date url class)
   "Make a new message fragment with the given ID, SUBJECT and author (FROM). All
 four arguments should be strings and, if DATE is not given, it is set to the
-current date."
+current date. If class is given, it should be a subclass of MESSAGE-FRAGMENT and
+is the class of object we create."
   (let ((mf
-         (make-instance (if url 'http-message-fragment 'message-fragment)
+         (make-instance (or class
+                            (if url 'http-message-fragment 'message-fragment))
                         :id id
                         :from from
                         :subject subject
@@ -121,12 +127,15 @@ current date."
       (setf (slot-value mf 'url) url))
     mf))
 
-(defmethod list-headers ((source http-source))
+(defmethod get-header-data ((source http-source))
   (multiple-value-bind (contents status)
       (drakma:http-request (list-url source) :proxy *proxy*)
     (unless (= 200 status)
       (error "Couldn't retrieve URL (~A) via Drakma" (list-url source)))
-    (find-message-fragments source contents)))
+    contents))
+
+(defmethod list-headers ((source news-source))
+  (find-message-fragments source (get-header-data source)))
 
 (defmethod expand-message-fragment ((source news-source)
                                     (fragment http-message-fragment))

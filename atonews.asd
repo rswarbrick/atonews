@@ -3,7 +3,8 @@
 (in-package :atonews-asd)
 
 (defsystem atonews
-    :depends-on (:usocket :babel :cl-ppcre :cl-base64 :drakma :cl-fad)
+    :depends-on (:usocket :babel :cl-ppcre :cl-base64
+                 :drakma :cl-fad :rss :sb-md5 :puri)
     :components
     ((:module core
               :pathname ""
@@ -17,7 +18,8 @@
                (:file "mime" :depends-on ("package" "util"))
                (:file "news-source" :depends-on ("package" "util" "mime" "message" "nntp"))
                (:file "fs-utils" :depends-on ("package" "util"))
-               (:file "pdftotext" :depends-on ("package"))))
+               (:file "pdftotext" :depends-on ("package"))
+               (:file "rss" :depends-on ("package" "news-source"))))
      (:module sources
               :depends-on (core)
               :components ((:file "maxim") (:file "edn")))
