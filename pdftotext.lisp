@@ -1,8 +1,9 @@
 (in-package :atonews)
 
-(defun tempfile-template (&optional (prefix "atonews"))
-  "Return a string that can be used as a template for sb-posix:mkstemp."
-  (concatenate 'string "/tmp/" prefix "XXXXXX"))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun tempfile-template (&optional (prefix "atonews"))
+    "Return a string that can be used as a template for sb-posix:mkstemp."
+    (concatenate 'string "/tmp/" prefix "XXXXXX")))
 
 (defmacro with-named-tempfile ((fd name
                                    &optional (template (tempfile-template)))
