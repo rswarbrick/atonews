@@ -31,9 +31,10 @@
           (values (make-message-fragment
                    (edn-make-id url year month day)
                    title "noreply@edn.com"
-                   :date (ymd-to-ut (parse-integer year)
-                                    (parse-integer month)
-                                    (parse-integer day))
+                   :date (universal-time-to-2822
+                          (ymd-to-ut (parse-integer year)
+                                     (parse-integer month)
+                                     (parse-integer day)))
                    :url (concatenate 'string "http://www.edn.com/" url))
                   end)))))
 

@@ -213,6 +213,9 @@ header earlier. Acts destructively on STR."
 
 (defun rfc2047-format-header (name value)
   "Return a sendable version of the given header data."
+  (unless (and (stringp value) (stringp name))
+    (error "Both NAME and VALUE should be strings. Here we have ~S and ~S."
+           name value))
   (format nil
           (concatenate 'string
                        "~A: ~{~A~^"
