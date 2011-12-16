@@ -1,4 +1,4 @@
-files=$(wildcard *.lisp)
+files=$(wildcard *.lisp) $(wildcard sources/*.lisp)
 
 .PHONY: clean all test
 
