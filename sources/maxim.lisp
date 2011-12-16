@@ -113,9 +113,9 @@ after START, before the first match for ENDING-REGEX."
     (aif+ (map-find
            (lambda (regex) (cl-ppcre:scan regex html :start (pos sp)))
            '("<!--\\s*BEGIN:\\s*RELATED PARTS\\s*-->"
+             "<!--\\s*END:\\s*KINDLE_CONTENT\\s*-->"
              "\\-*<b>The application note you have requested requires"))
         (princ (subseq html (pos sp) it) stream)
       (error "Can't find the end of the real content"))
     (format stream "~%~%</body></html>"))
   "text/html")
-
