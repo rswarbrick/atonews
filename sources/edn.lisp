@@ -41,7 +41,12 @@
 (defmethod filter-source-contents ((source edn-design-ideas-ns) html stream)
   (let ((sp (make-string-pointer html)))
     (format stream "<html><head>~%")
-    (unless (search-forward sp "<h1>" nil)
+    (aif+ (or (search-forward sp "<title>(.*?) [^a-z<]*EDN</title>")
+              (search-forward sp "<title>(.*)</title>"))
+        (format stream "  <title>~A</title>~%</head>~%~%<body>~%"
+                (aref it 0))
+      (error "Couldn't find a title."))
+    (unless (search-forward sp "</h1>" nil)
       (error "Couldn't find start of content"))
     (let ((start (- (pos sp) 4)))
       (unless (search-forward sp "<div class=\"noinfuse\"" nil)
