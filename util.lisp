@@ -1,5 +1,8 @@
 (in-package :atonews)
 
+(defvar *proxy* '("localhost" 3128)
+  "A proxy to pipe requests through. Set to nil if there isn't one.")
+
 (defun negate (predicate)
   "PREDICATE should be a function of one argument. Returns a function that is
 the logical negation of PREDICATE."
@@ -81,3 +84,17 @@ result. Return this true result."
                              acc)))
                    (nreverse acc)))
        ,@body)))
+
+(defvar *debug-http-get-requests* nil
+  "Set this to T to see all get requests reported.")
+
+(defun http-get (url &key force-binary)
+  "A really trivial HTTP request for a given URL. Throws an error if anything
+goes wrong, and otherwise returns the contents."
+  (when *debug-http-get-requests*
+    (format t "~AHTTP GET ~A~%" (if force-binary "BIN " "") url)
+    (finish-output))
+  (multiple-value-bind (contents status headers)
+      (drakma:http-request url :proxy *proxy* :force-binary force-binary)
+    (unless (= 200 status) (error "Couldn't retrieve URL (~A) via Drakma" url))
+    (values contents headers)))

@@ -1,8 +1,5 @@
 (in-package :atonews)
 
-(defvar *proxy* '("localhost" 3128)
-  "A proxy to pipe requests through. Set to nil if there isn't one.")
-
 (defvar *last-read-times* nil
   "An assoc, keyed by class name, whose value is the last time that class read
 the news source.")
@@ -68,7 +65,7 @@ NIL NIL) if no message found."))
   (:documentation "Actually retrieve the header data for the given news
 source. For example, make an HTTP request or the like."))
 
-(defgeneric list-headers (news-source)
+(defgeneric list-headers (news-source server)
   (:documentation
    "Return a list of message fragments corresponding to the new articles
 available from the news source. It doesn't matter if a previously seen article
@@ -128,26 +125,19 @@ is the class of object we create."
     mf))
 
 (defmethod get-header-data ((source http-source))
-  (multiple-value-bind (contents status)
-      (drakma:http-request (list-url source) :proxy *proxy*)
-    (unless (= 200 status)
-      (error "Couldn't retrieve URL (~A) via Drakma" (list-url source)))
-    contents))
+  (http-get (list-url source)))
 
-(defmethod list-headers ((source news-source))
+(defmethod list-headers ((source news-source) (server nntp-server))
   (find-message-fragments source (get-header-data source)))
 
 (defmethod expand-message-fragment ((source news-source)
                                     (fragment http-message-fragment))
-  (multiple-value-bind (contents status)
-      (drakma:http-request (url fragment) :proxy *proxy*)
-    (unless (= 200 status)
-      (error "Couldn't retrieve URL (~A) via Drakma" (list-url source)))
-    (let* ((mime-type nil)
-           (data (with-output-to-string (str)
-                   (setf mime-type
-                         (filter-source-contents source contents str)))))
-      (values mime-type data))))
+  (let* ((contents (http-get (url fragment)))
+         (mime-type nil)
+         (data (with-output-to-string (str)
+                 (setf mime-type
+                       (filter-source-contents source contents str)))))
+    (values mime-type data)))
 
 (defun url-domain (url)
   "Get the domain of a fully-qualified url."
@@ -215,12 +205,8 @@ with sensible ones. Returns (VALUES FIXED-HTML BINARY-PARTS)."
 
 (defun get-mime-image (url)
   "Download the given URL and return a mime-part representing the image."
-  (multiple-value-bind (contents status headers)
-      (drakma:http-request url :force-binary t :proxy *proxy*)
-    (unless (= status 200)
-      (error "Error downloading image."))
-    (make-binary-part contents
-                      (cdr (assoc :content-type headers)))))
+  (multiple-value-bind (contents headers) (http-get url :force-binary t)
+    (make-binary-part contents (cdr (assoc :content-type headers)))))
 
 (defmethod make-message-from-fragment ((source news-source)
                                        (fragment message-fragment)
@@ -262,11 +248,14 @@ with sensible ones. Returns (VALUES FIXED-HTML BINARY-PARTS)."
           *last-read-times*))
   (save-last-read-times))
 
-(defmethod new-headers ((source news-source) (server nntp-server))
-  (let* ((all-headers (list-headers source))
-         (new-ids (filter-new-message-ids server (mapcar #'id all-headers))))
-    (mapcar (lambda (id) (find id all-headers :key #'id :test #'string=))
+(defun filter-headers (headers server)
+  "Return the subset of HEADERS that haven't yet been seen on the server."
+  (let* ((new-ids (filter-new-message-ids server (mapcar #'id headers))))
+    (mapcar (lambda (id) (find id headers :key #'id :test #'string=))
             new-ids)))
+
+(defmethod new-headers ((source news-source) (server nntp-server))
+  (filter-headers (list-headers source server) server))
 
 (defmethod force-update-news-source ((source news-source) (group nntp-group))
   (mapcar (lambda (fragment)
@@ -289,12 +278,16 @@ with sensible ones. Returns (VALUES FIXED-HTML BINARY-PARTS)."
   (when (needs-update? source) (force-update-news-source source group))
   (values))
 
-(defmethod find-message-fragments ((source news-source) contents)
+(defun generic-find-message-fragments (source contents getter)
+  "Allows us to specify the function doing the getting. Used by TIERED-SOURCE."
   (let ((acc) (pos 0) (extra nil))
     (loop
        (multiple-value-bind (frag new-pos new-extra)
-           (next-message-fragment source contents pos extra)
+           (funcall getter source contents pos extra)
          (unless frag (return))
          (push frag acc)
          (setf pos new-pos extra new-extra)))
     (nreverse acc)))
+
+(defmethod find-message-fragments ((source news-source) contents)
+  (generic-find-message-fragments source contents #'next-message-fragment))

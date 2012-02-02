@@ -17,10 +17,11 @@
                (:file "string-pointer" :depends-on ("package"))
                (:file "mime" :depends-on ("package" "util"))
                (:file "news-source" :depends-on ("package" "util" "mime" "message" "nntp"))
+               (:file "tiered-source" :depends-on ("news-source"))
                (:file "fs-utils" :depends-on ("package" "util"))
                (:file "pdftotext" :depends-on ("package"))
                (:file "rss" :depends-on ("package" "news-source"))))
      (:module sources
               :depends-on (core)
-              :components ((:file "maxim") (:file "edn")))
+              :components ((:file "maxim") (:file "edn") (:file "cmj")))
      (:file "atonews" :depends-on (core sources))))
