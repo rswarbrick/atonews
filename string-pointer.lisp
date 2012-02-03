@@ -11,16 +11,18 @@
 (defmethod make-string-pointer ((str string) &optional (pos 0))
   (make-instance 'string-pointer :str str :pos pos))
 
-(defgeneric seek (string-pointer position)
+(defgeneric seek (string-pointer position &optional relative)
   (:documentation "Seek to a given position."))
 
 (defgeneric tell (string-pointer)
   (:documentation "Return the current position."))
 
-(defmethod seek ((sp string-pointer) (position integer))
-  (unless (typep position `(integer 0 ,(length (str sp))))
+(defmethod seek ((sp string-pointer) (position integer) &optional relative)
+  (unless (or relative (typep position `(integer 0 ,(length (str sp)))))
     (error "Position not valid for string."))
-  (setf (pos sp) position)
+  (if relative
+      (seek sp (+ position (pos sp)))
+      (setf (pos sp) position))
   (values))
 
 (defmethod tell ((sp string-pointer))
