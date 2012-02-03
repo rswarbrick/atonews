@@ -8,6 +8,10 @@
   ((key :initarg :key :reader key)
    (value :initarg :value :reader value)))
 
+(defmethod print-object ((header header) stream)
+  (print-unreadable-object (header stream :type t)
+    (format stream "~A = ~A" (key header) (value header))))
+
 (defun make-header (key value)
   (unless (every #'quoted-printable-self-representable? key)
     (error "Invalid key for header: ~A" key))
