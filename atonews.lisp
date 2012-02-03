@@ -3,6 +3,7 @@
 (defvar *atonews-groups*
   '(("local.electronics.maxim.app-notes" maxim-appnotes-ns)
     ("local.electronics.edn.design-ideas" edn-design-ideas-ns)
+    ("local.electronics.analog.cfl" analog-cfl-ns)
     ("local.maths.cmj" cmj-ns)))
 
 (defun run ()

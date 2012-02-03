@@ -4,7 +4,7 @@
 
 (defsystem atonews
     :depends-on (:usocket :babel :cl-ppcre :cl-base64
-                 :drakma :cl-fad :rss :sb-md5 :puri)
+                 :drakma :cl-fad :rss :sb-md5 :puri :xmls)
     :components
     ((:module core
               :pathname ""
