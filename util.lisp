@@ -46,7 +46,7 @@ than BASE so that the sum of these numbers with increasing powers of BASE is N."
 
 (defmacro aif+ (test then &body else)
   "Anaphoric IF, which also allows multiple forms in the ELSE part."
-  `(let ((it ,test)) (if it ,then ,@else)))
+  `(let ((it ,test)) (if it ,then (progn ,@else))))
 
 (defmacro awhen (test &body then)
   "Anaphoric WHEN."
