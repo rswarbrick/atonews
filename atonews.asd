@@ -23,5 +23,6 @@
                (:file "rss" :depends-on ("package" "news-source"))))
      (:module sources
               :depends-on (core)
-              :components ((:file "maxim") (:file "edn") (:file "cmj")))
+              :components ((:file "maxim") (:file "edn")
+                           (:file "cmj") (:file "analog")))
      (:file "atonews" :depends-on (core sources))))
