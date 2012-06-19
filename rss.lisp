@@ -59,3 +59,15 @@ URL is rather different."))
                   (subject fragment)
                   (description fragment)
                   (url fragment))))
+
+(defclass rss-link-source (rss-source)
+  ()
+  (:documentation
+   "Like RSS-SOURCE, but FILTER-SOURCE-CONTENTS is given the contents of the
+linked URL, rather than the feed post. Useful for RSS feeds that basically just
+contain a list of titles."))
+
+(defmethod expand-message-fragment ((source rss-link-source)
+                                    (fragment rss-message-fragment))
+  (multiple-value-bind (contents headers) (http-get (url fragment))
+    (values (cdr (assoc :content-type headers)) contents)))
