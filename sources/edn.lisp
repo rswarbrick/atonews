@@ -1,7 +1,7 @@
 (in-package :atonews)
 
-(defclass edn-design-ideas-ns (http-source)
-  ((list-url :initform "http://www.edn.com/channel/Design_Ideas.php")))
+(defclass edn-design-ideas-ns (rss-link-source)
+  ((list-url :initform "http://www.edn.com/rss/designideas")))
 
 (defparameter *edn-header-regexp*
   (cl-ppcre:create-scanner
@@ -20,37 +20,28 @@
   (format nil "<~A-~A~A~A@edn.com>"
           (edn-extract-article-number url) y m d))
 
-(defmethod next-message-fragment ((source edn-design-ideas-ns) html pos extra)
-  (declare (ignore extra))
-  (multiple-value-bind (start end match-starts match-ends)
-      (cl-ppcre:scan *edn-header-regexp* html :start pos)
-    (if (not start)
-        (values nil nil)
-        (bind-scan-matches match-starts match-ends
-            (url title month day year)
-          (values (make-message-fragment
-                   (edn-make-id url year month day)
-                   title "noreply@edn.com"
-                   :date (universal-time-to-2822
-                          (ymd-to-ut (parse-integer year)
-                                     (parse-integer month)
-                                     (parse-integer day)))
-                   :url (concatenate 'string "http://www.edn.com/" url))
-                  end)))))
-
-(defmethod filter-source-contents ((source edn-design-ideas-ns) html stream)
-  (let ((sp (make-string-pointer html)))
-    (format stream "<html><head>~%")
-    (aif+ (or (search-forward sp "<title>(.*?) [^a-z<]*EDN</title>")
-              (search-forward sp "<title>(.*)</title>"))
-        (format stream "  <title>~A</title>~%</head>~%~%<body>~%"
-                (aref it 0))
-      (error "Couldn't find a title."))
-    (unless (search-forward sp "</h1>" nil)
-      (error "Couldn't find start of content"))
-    (let ((start (- (pos sp) 4)))
-      (unless (search-forward sp "<div class=\"noinfuse\"" nil)
-        (error "Couldn't find end of content"))
-      (princ (subseq (str sp) start (- (pos sp) 21)) stream))
-    (format stream "~%~%</body></html>"))
-  "text/html")
+(defmethod filter-source-contents ((source edn-design-ideas-ns) contents stream)
+  (xpath:with-namespaces (("html" "http://www.w3.org/1999/xhtml"))
+    (flet ((get-a-node (path stp)
+             (first (xpath:all-nodes (xpath:evaluate path stp))))
+           (make-html-node (name)
+             (stp:make-element name "http://www.w3.org/1999/xhtml")))
+      (let* ((stp (chtml:parse (crlf-to-lf contents) (stp:make-builder)))
+             (title (aif+ (get-a-node "//html:h1" stp)
+                        (xpath:string-value it) "(Unknown title)"))
+             (div (or (get-a-node "//html:div[@class='detail_body']" stp)
+                       (error "Couldn't find message body.")))
+             (html (make-html-node "html")))
+        (let ((head (make-html-node "head" ))
+              (title-node (make-html-node "title"))
+              (title-text (stp:make-text title))
+              (body (make-html-node "body")))
+          (stp:append-child title-node title-text)
+          (stp:append-child head title-node)
+          (stp:append-child html head)
+          (stp:append-child html body)
+          (stp:detach div)
+          (stp:append-child body div))
+        (stp:serialize (stp:make-document html)
+                       (cxml:make-character-stream-sink stream))
+        (values)))))

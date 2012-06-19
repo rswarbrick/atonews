@@ -98,3 +98,16 @@ goes wrong, and otherwise returns the contents."
       (drakma:http-request url :proxy *proxy* :force-binary force-binary)
     (unless (= 200 status) (error "Couldn't retrieve URL (~A) via Drakma" url))
     (values contents headers)))
+
+(defun crlf-to-lf (text)
+  "Convert all CR/LF pairs to just LF."
+  (let ((pos 0) (old-pos 0))
+    (with-output-to-string (str)
+      (loop
+         (setf old-pos pos
+               pos (search '(#\Return #\Newline) text :start2 old-pos))
+         (princ (subseq text old-pos pos) str)
+         (if pos
+             (princ (string #\Newline) str)
+             (return))
+         (incf pos 2)))))
