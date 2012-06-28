@@ -88,6 +88,18 @@ result. Return this true result."
 (defvar *debug-http-get-requests* nil
   "Set this to T to see all get requests reported.")
 
+(define-condition http-error (error)
+  ((url :initarg :url :reader url)
+   (status :initarg :status :reader status)
+   (headers :initarg :headers :reader headers))
+  (:report
+   (lambda (condition stream)
+     (format stream "Non-200 status ~A getting ~S.~%~%Headers: ~S"
+             (status condition) (url condition) (headers condition)))))
+
+(defun http-error (url status headers)
+  (error 'http-error :url url :status status :headers headers))
+
 (defun http-get (url &key force-binary)
   "A really trivial HTTP request for a given URL. Throws an error if anything
 goes wrong, and otherwise returns the contents."
@@ -96,7 +108,7 @@ goes wrong, and otherwise returns the contents."
     (finish-output))
   (multiple-value-bind (contents status headers)
       (drakma:http-request url :proxy *proxy* :force-binary force-binary)
-    (unless (= 200 status) (error "Couldn't retrieve URL (~A) via Drakma" url))
+    (unless (= 200 status) (http-error url status headers))
     (values contents headers)))
 
 (defun crlf-to-lf (text)
