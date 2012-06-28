@@ -129,6 +129,10 @@ is the class of object we create."
       (setf (slot-value mf 'url) url))
     mf))
 
+(defmethod print-object ((mf message-fragment) stream)
+  (print-unreadable-object (mf stream :type t)
+    (prin1 (subject mf) stream)))
+
 (defmethod get-header-data ((source http-source))
   (http-get (list-url source)))
 
