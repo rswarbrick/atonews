@@ -191,13 +191,18 @@ with sensible ones. Returns (VALUES FIXED-HTML BINARY-PARTS)."
              (declare (ignore full-match))
              (let ((resolved-url (resolve-url (or trimmed-url big-url)
                                               (url fragment))))
-               (format nil "<img~Asrc=\"cid:~A\""
-                       gubbins
-                       (content-id
-                        (or (gethash resolved-url parts)
-                            (setf (gethash resolved-url parts)
-                                  (get-mime-image resolved-url)))
-                        domain))))
+               (handler-case
+                   (format nil "<img~Asrc=\"cid:~A\""
+                           gubbins
+                           (content-id
+                            (or (gethash resolved-url parts)
+                                (setf (gethash resolved-url parts)
+                                      (get-mime-image resolved-url)))
+                            domain))
+                 (http-error (err)
+                   (declare (ignore err))
+                   (format nil "<img~Asrc=\"~A\""
+                           gubbins resolved-url)))))
            :simple-calls t))
     ;; And <a> links
     (setf scratch
