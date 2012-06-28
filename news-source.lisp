@@ -88,6 +88,11 @@ controls what goes in the Newsgroups: line."))
 messages and making message fragments from them. Instead of overriding this,
 consider overriding next-message-fragment."))
 
+(defgeneric contents-for-message-fragment (source fragment)
+  (:documentation
+   "Get the contents for the given message fragment (this will probably consist
+of some sort of, more or less convoluted, HTTP request or the like)"))
+
 ;; Methods defined for general sources etc. ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmethod update-frequency ((source news-source)) (* 24 3600))
 
@@ -130,13 +135,18 @@ is the class of object we create."
 (defmethod list-headers ((source news-source) (server nntp-server))
   (find-message-fragments source (get-header-data source)))
 
-(defmethod expand-message-fragment ((source news-source)
-                                    (fragment http-message-fragment))
-  (let* ((contents (http-get (url fragment)))
-         (mime-type nil)
-         (data (with-output-to-string (str)
-                 (setf mime-type
-                       (filter-source-contents source contents str)))))
+(defmethod contents-for-message-fragment ((source news-source)
+                                          (fragment http-message-fragment))
+  (http-get (url fragment)))
+
+(defmethod expand-message-fragment ((source news-source) (fragment message-fragment))
+  (let* ((mime-type nil)
+         (data
+          (with-output-to-string (str)
+            (setf mime-type
+                  (filter-source-contents
+                   source
+                   (contents-for-message-fragment source fragment) str)))))
     (values mime-type data)))
 
 (defun url-domain (url)

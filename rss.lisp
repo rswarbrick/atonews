@@ -47,16 +47,15 @@ URL is rather different."))
               (rss-make-message-fragment item channel from-address host))
             (rss:items channel))))
 
-(defmethod expand-message-fragment ((source rss-source)
-                                    (fragment rss-message-fragment))
-  (values "text/html"
-          (format nil "~
+(defmethod contents-for-message-fragment ((source rss-source)
+                                         (fragment rss-message-fragment))
+  (format nil "~
 <html><head><title>~A</title></head>~
 <body>~A<br><br>~
 <p><a href=\"~A\">Link</a></p></body>"
-                  (subject fragment)
-                  (description fragment)
-                  (url fragment))))
+          (subject fragment)
+          (description fragment)
+          (url fragment)))
 
 (defclass rss-link-source (rss-source)
   ()
@@ -65,7 +64,6 @@ URL is rather different."))
 linked URL, rather than the feed post. Useful for RSS feeds that basically just
 contain a list of titles."))
 
-(defmethod expand-message-fragment ((source rss-link-source)
-                                    (fragment rss-message-fragment))
-  (multiple-value-bind (contents headers) (http-get (url fragment))
-    (values (cdr (assoc :content-type headers)) contents)))
+(defmethod contents-for-message-fragment ((source rss-link-source)
+                                          (fragment rss-message-fragment))
+  (http-get (url fragment)))

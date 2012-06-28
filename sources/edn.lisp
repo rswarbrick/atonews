@@ -44,4 +44,4 @@
           (stp:append-child body div))
         (stp:serialize (stp:make-document html)
                        (cxml:make-character-stream-sink stream))
-        (values)))))
+        "text/html"))))
